@@ -19,9 +19,10 @@ services:
     container_name: grafana
     restart: unless-stopped
     environment:
-      - GF_AUTH_ANONYMOUS_ENABLED=true
-      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
-      - GF_USERS_DEFAULT_THEME=light
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
+      - GF_SERVER_DOMAIN=${GF_DOMAIN}
+      - GF_SERVER_ROOT_URL=${GF_ROOT_URL}
       - GF_LOG_MODE=console
       - GF_LOG_LEVEL=critical
       - GF_PANELS_ENABLE_ALPHA=true
@@ -34,13 +35,14 @@ services:
       - ./dashboards/node-metrics.json:/var/lib/grafana/dashboards/node-metrics.json:ro
       - ./dashboards/container-metrics.json:/var/lib/grafana/dashboards/container-metrics.json:ro
       - ./dashboards/log-search.json:/var/lib/grafana/dashboards/log-search.json:ro
-      - grafana-data:/var/lib/grafana
+      - ./_data/grafana-data:/var/lib/grafana
     depends_on:
       - prometheus
-    ports:
-      - 3000:3000
+    expose:
+      - "3000"
     cpus: 0.5
     mem_limit: 512m
+    user: "$UID:$GID"
     networks:
       - monitoring
     labels:
@@ -63,15 +65,16 @@ services:
       - ./configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - ./configs/prometheus/recording-rules.yml:/etc/prometheus/recording-rules.yml
       - ./configs/prometheus/alerting-rules.yml:/etc/prometheus/alerting-rules.yml
-      - prometheus-data:/prometheus
+      - ./_data/prometheus-data:/prometheus
     depends_on:
       - alertmanager
-    ports:
-      - 9090:9090
+    expose:
+      - "9090"
     cpus: 0.5
     mem_limit: 512m
     networks:
       - monitoring
+    user: "$UID:$GID"
     labels:
       <<: *default-labels
     logging: *default-logging
@@ -128,8 +131,8 @@ services:
       - '--web.external-url=http://localhost:9093'
     volumes:
       - ./configs/alertmanager/alertmanager-fallback-config.yml:/etc/alertmanager/config.yml
-    ports:
-      - 9093:9093
+    expose:
+      - "9093"
     cpus: 0.5
     mem_limit: 512m
     networks:
@@ -143,21 +146,10 @@ services:
   uncomplicated-alert-receiver:
     image: ghcr.io/jamesread/uncomplicated-alert-receiver
     container_name: uncomplicated-alert-receiver
+    expose: 
+      - "8080"
     ports:
       - 9094:8080
-    cpus: 0.5
-    mem_limit: 512m
-    networks:
-      - monitoring
-    labels:
-      <<: *default-labels
-    logging: *default-logging
-
-  redis:
-    image: redis:${REDIS_VERSION:-6}
-    container_name: redis
-    ports:
-      - 6379:6379
     cpus: 0.5
     mem_limit: 512m
     networks:
@@ -170,8 +162,8 @@ services:
     image: grafana/loki:3.0.0
     container_name: loki
     user: root
-    ports:
-      - 3100:3100
+    expose:
+      - "3100"
     command: -config.file=/etc/loki/loki.yaml
     volumes:
       - ./configs/loki/loki.yaml:/etc/loki/loki.yaml
@@ -201,10 +193,6 @@ services:
     labels:
       <<: *default-labels
     logging: *default-logging
-
-volumes:
-  grafana-data: {}
-  prometheus-data: {}
 
 networks:
   monitoring:
