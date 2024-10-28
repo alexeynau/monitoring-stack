@@ -148,8 +148,6 @@ services:
     container_name: uncomplicated-alert-receiver
     expose: 
       - "8080"
-    ports:
-      - 9094:8080
     cpus: 0.5
     mem_limit: 512m
     networks:
